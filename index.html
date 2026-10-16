@@ -164,6 +164,26 @@ async function connect(){
     const svc=await(await dev.gatt.connect()).getPrimaryService(NUS);
     rx=await svc.getCharacteristic('6e400002-b5a3-f393-e0a9-e50e24dcca9e');
     tx=await svc.getCharacteristic('6e400003-b5a3-f393-e0a9-e50e24dcca9e');
+
+    const dec = new TextDecoder();
+    let buf = '';
+
+    tx.addEventListener('characteristicvaluechanged', e => {
+      buf += dec.decode(e.target.value);
+
+      const lines = buf.split('\n');
+      buf = lines.pop();
+
+      for (const ln of lines) {
+        try {
+          const o = JSON.parse(ln);
+          o.d ? dbgData(o) : o.cfg ? showCfg(o) : show(o);
+        } catch (err) {
+          console.log('Lỗi đọc dữ liệu BLE:', err, ln);
+        }
+      }
+    });
+
     await tx.startNotifications();
   }catch(e){if(dev&&dev.gatt.connected)dev.gatt.disconnect();rx=null;dev=null;if(e.name!='NotFoundError')lost('LỖI KẾT NỐI');return;}
   $('con').hidden=$('demo').hidden=true;$('state').textContent='ĐANG CHỜ...';lastRx=Date.now();
